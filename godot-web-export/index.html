@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Stack Rush Preview</title>
+<style>
+  body { margin:0; background:#222; color:#eee; font-family: sans-serif; display:flex; flex-direction: column; align-items: center; height: 100vh; }
+  canvas { background: #333; margin-top: 1em; border-radius: 8px; }
+  #ui { margin-top: 1em; display: flex; gap: 15px; align-items: center; }
+  label, input { font-size: 16px; }
+  #highScoreDisplay { font-weight: bold; font-size: 20px; }
+  button { font-size: 16px; padding: 8px 14px; border-radius: 5px; border: none; background: #444; color: #eee; cursor: pointer; }
+  button:hover { background: #666; }
+</style>
+</head>
+<body>
+
+<h1>Stack Rush (Preview)</h1>
+<div id="highScoreDisplay">High Score: 0</div>
+
+<div id="ui">
+  <label for="playerNameInput">Player Name:</label>
+  <input type="text" id="playerNameInput" placeholder="Enter your name" maxlength="12" />
+  <button id="startButton">Start Game</button>
+</div>
+
+<canvas id="gameCanvas" width="400" height="600"></canvas>
+
+<div id="info" style="margin-top:10px; font-size: 18px;">
+  <span id="heightMeter">Height: 0</span> |
+  <span id="speedIndicator">Speed: 200</span>
+</div>
+
+<script>
+(() => {
+  const canvas = document.getElementById('gameCanvas');
+  const ctx = canvas.getContext('2d');
+
+  const blockWidth = 60;
+  const blockHeight = 20;
+  let blockX = 0;
+  let blockY = canvas.height - blockHeight;
+  let speed = 200;
+  let direction = 1;
+  let moving = false;
+  let heightCount = 0;
+  let highScore = 0;
+  let gameRunning = false;
+
+  const highScoreDisplay = document.getElementById('highScoreDisplay');
+  const heightMeter = document.getElementById('heightMeter');
+  const speedIndicator = document.getElementById('speedIndicator');
+  const startButton = document.getElementById('startButton');
+  const playerNameInput = document.getElementById('playerNameInput');
+
+  // Initialize high score display 0 immediately
+  highScoreDisplay.textContent = "High Score: 0";
+  highScoreDisplay.style.display = "block";
+
+  // Load from localStorage via applaa-game-load-data message
+  function requestGameData() {
+    window.parent.postMessage({
+      type: 'applaa-game-load-data',
+      gameId: 'stackrush_8k2m1z7j'
+    }, '*');
+  }
+
+  window.addEventListener('message', (event) => {
+    if (event.data.type === 'applaa-game-data-loaded') {
+      const data = event.data.data || {};
+      highScore = data.highScore || 0;
+      const lastPlayerName = data.lastPlayerName || '';
+      highScoreDisplay.textContent = 'High Score: ' + highScore.toLocaleString();
+      if (lastPlayerName) {
+        playerNameInput.value = lastPlayerName;
+      }
+    }
+  });
+
+  requestGameData();
+
+  // Save score
+  function saveScore(playerName, score) {
+    window.parent.postMessage({
+      type: 'applaa-game-save-score',
+      gameId: 'stackrush_8k2m1z7j',
+      playerName,
+      score
+    }, '*');
+  }
+
+  // Game loop
+  let lastTime = 0;
+  function gameLoop(timestamp) {
+    if (!lastTime) lastTime = timestamp;
+    const delta = (timestamp - lastTime) / 1000;
+    lastTime = timestamp;
+
+    if (moving) {
+      blockX += direction * speed * delta;
+      if (blockX + blockWidth > canvas.width) {
+        direction = -1;
+        blockX = canvas.width - blockWidth;
+      } else if (blockX < 0) {
+        direction = 1;
+        blockX = 0;
+      }
+    }
+
+    // Draw
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Draw stacked blocks
+    for (let i = 0; i < heightCount; i++) {
+      ctx.fillStyle = '#66cc66';
+      ctx.fillRect(150, canvas.height - (i + 1) * blockHeight, blockWidth, blockHeight);
+    }
+
+    // Draw moving block
+    if (moving) {
+      ctx.fillStyle = '#cc6666';
+      ctx.fillRect(blockX, blockY, blockWidth, blockHeight);
+    }
+
+    requestAnimationFrame(gameLoop);
+  }
+
+  // Drop block logic
+  function dropBlock() {
+    if (!moving) return;
+    moving = false;
+
+    // Check alignment: perfect is blockX near 150
+    const offset = Math.abs(blockX - 150);
+    if (offset > 30) {
+      // Game over
+      alert("Game Over! Your Height: " + heightCount);
+      if (heightCount > highScore) {
+        highScore = heightCount;
+        highScoreDisplay.textContent = "High Score: " + highScore;
+        saveScore(playerNameInput.value || "Player", highScore);
+      }
+      heightCount = 0;
+      speed = 200;
+      speedIndicator.textContent = 'Speed: ' + speed;
+      startButton.disabled = false;
+      gameRunning = false;
+      return;
+    }
+
+    // Perfect or acceptable drop - increase height and speed
+    heightCount++;
+    speed *= 1.1;
+    if (speed > 1200) speed = 1200;
+    blockY = canvas.height - (heightCount + 1) * blockHeight;
+    blockX = 0;
+    direction = 1;
+    moving = true;
+
+    heightMeter.textContent = "Height: " + heightCount;
+    speedIndicator.textContent = "Speed: " + Math.round(speed);
+  }
+
+  startButton.addEventListener('click', () => {
+    if (!playerNameInput.value.trim()) {
+      alert("Please enter your name before starting.");
+      return;
+    }
+    heightCount = 0;
+    speed = 200;
+    blockX = 0;
+    blockY = canvas.height - blockHeight;
+    direction = 1;
+    moving = true;
+    gameRunning = true;
+    startButton.disabled = true;
+    heightMeter.textContent = "Height: 0";
+    speedIndicator.textContent = "Speed: 200";
+  });
+
+  window.addEventListener('keydown', (e) => {
+    if (e.code === "Space" && gameRunning) {
+      dropBlock();
+    }
+  });
+
+  window.addEventListener('touchstart', (e) => {
+    if (gameRunning) {
+      dropBlock();
+    }
+  });
+
+  requestAnimationFrame(gameLoop);
+})();
+</script>
+
+</body>
+</html>

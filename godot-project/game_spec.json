@@ -1,0 +1,46 @@
+{
+  "game": {
+    "name": "Stack Rush",
+    "type": "2D",
+    "genre": "arcade",
+    "description": "Stacking game where player taps to drop blocks with perfect alignment. Blocks move faster each level."
+  },
+  "settings": {
+    "window": {
+      "width": 800,
+      "height": 600
+    },
+    "physics": {
+      "gravity": 0
+    }
+  },
+  "player": {
+    "name": "Player",
+    "health": 1,
+    "speed": 0,
+    "abilities": ["drop_blocks"]
+  },
+  "entities": {
+    "blocks": [
+      {
+        "name": "StackBlock",
+        "speed": [200, "increases by 10% each level"],
+        "behavior": "move_horizontal"
+      }
+    ]
+  },
+  "levels": [
+    {
+      "name": "Level 1",
+      "background": "minimalist",
+      "obstacles": []
+    }
+  ],
+  "logic": {
+    "winCondition": "stack_to_victory_height",
+    "loseCondition": "block_misaligned",
+    "scoring": {
+      "pointsPerBlock": 1
+    }
+  }
+}

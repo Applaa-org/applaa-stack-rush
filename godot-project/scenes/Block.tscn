@@ -1,0 +1,17 @@
+[gd_scene load_steps=6 format=3 uid="uid://block"]
+[ext_resource path="res://scripts/Block.gd" type="Script" id=1]
+[node name="Block" type="Node2D"]
+script = ExtResource(1)
+position = Vector2(0, 0)
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+texture = null
+centered = true
+region_enabled = false
+region_rect_position = Vector2(0, 0)
+region_rect_size = Vector2(60, 20)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = RectangleShape2D {
+    extents = Vector2(30, 10)
+}
